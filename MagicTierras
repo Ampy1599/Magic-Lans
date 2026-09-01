@@ -1,0 +1,408 @@
+import random
+
+import pygame
+
+
+pygame.init()
+
+screen = pygame.display.set_mode((1500, 950))  
+
+pygame.display.set_caption("Magic Lands")
+icon=pygame.image.load("Simbolo.jpg")
+pygame.display.set_icon(icon)
+
+boton_turno = pygame.image.load("boton_pasar.png")
+boton_turno = pygame.transform.scale(boton_turno, (300, 250))
+boton_mask_turno = pygame.mask.from_surface(boton_turno)
+boton_turno_rect = pygame.Rect(0, 250, 300, 250)
+boton_turno_pos = (300, 250)
+
+boton_robo = pygame.image.load("draw.png")
+boton_robo = pygame.transform.scale(boton_robo, (300, 250))
+boton_mask_robo = pygame.mask.from_surface(boton_robo)
+boton_robo_rect = pygame.Rect(0, 400, 300, 250)
+boton_robo_pos = (300, 400)
+
+turno1=True
+mazo1=pygame.image.load("carta_atras.jpeg")
+mazo1X=0
+mazo1Y=0
+
+mazo1X1=0
+mazo1Y1=810
+
+mazo2=pygame.image.load("carta_atras.jpeg")
+mazo2X=50
+mazo2Y=0
+
+mazo2X2=50
+mazo2Y2=810
+
+mazo3=pygame.image.load("carta_atras.jpeg")
+mazo3X=100
+mazo3Y=0
+
+mazo3X3=100
+mazo3Y3=810
+
+mazo4=pygame.image.load("carta_atras.jpeg")
+mazo4X=150
+mazo4Y=0
+
+mazo4X4=150
+mazo4Y4=810
+
+mazo5=pygame.image.load("carta_atras.jpeg")
+mazo5X=200
+mazo5Y=0
+
+mazo5X5=200
+mazo5Y5=810
+
+mazo6=pygame.image.load("carta_atras.jpeg")
+mazo6X=250
+mazo6Y=0
+
+mazo6X6=250
+mazo6Y6=810
+
+mazo7=pygame.image.load("carta_atras.jpeg")
+mazo7X=300
+mazo7Y=0
+
+mazo7X7=300
+mazo7Y7=810
+
+forest=pygame.image.load("Forest.png")
+
+mountain=pygame.image.load("Mountain.png")
+
+swamp=pygame.image.load("Swamp.png")
+
+island=pygame.image.load("Island.png")
+
+plains=pygame.image.load("Plains.png")
+
+def draw(x, y,img):
+    screen.blit(img, (x, y))
+def primera_mano():
+    lista_mano_1=[]
+    for i in range(7):
+        x=random.randint(1, 5)
+        if x==1:
+            lista_mano_1.append("Forest")
+        elif x==2:
+            lista_mano_1.append("Mountain")
+        elif x==3:
+            lista_mano_1.append("Island")
+        elif x==4:
+            lista_mano_1.append("Plains")
+        elif x==5:
+            lista_mano_1.append("Swamp")
+    return lista_mano_1
+running = True
+x=1
+tamano_mazo_1=50
+tamano_mazo_2=50
+fuente=pygame.font.Font(None, 36)
+lista_mano_1=primera_mano()
+lista_mano_2=primera_mano()
+screen.fill((255, 110, 0))
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False 
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_x, mouse_y = event.pos
+
+            x = boton_turno_pos[0] - mouse_x
+            y = mouse_y - boton_turno_pos[1]
+            if 0 <= x < boton_turno.get_width() and 0 <= y < boton_turno.get_height():
+                if boton_mask_turno.get_at((x, y)):
+                    if len(lista_mano_1)-7==1:
+                        texto=fuente.render(F"Debes descartar {len(lista_mano_1)-7} Carta", True, (255, 255, 255))
+                        screen.blit(texto, (0, 100))
+                    elif len(lista_mano_1)-7>1:
+                        texto1=fuente.render(F"Debes descartar {len(lista_mano_1)-7} Cartas", True, (255, 255, 255))
+                        screen.blit(texto1, (0, 100))
+                    else:
+                            turno1 = not turno1
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_x, mouse_y = event.pos
+
+            x = boton_robo_pos[0] - mouse_x
+            y = mouse_y - boton_robo_pos[1]
+            if 0 <= x < boton_robo.get_width() and 0 <= y < boton_robo.get_height():
+                if boton_mask_robo.get_at((x, y)):                
+                    f=random.randint(1, 5)
+                    if turno1:
+                        if f==1:
+                            lista_mano_1.append("Forest")
+                        elif f==2:
+                            lista_mano_1.append("Mountain")
+                        elif f==3:
+                            lista_mano_1.append("Island")
+                        elif f==4:
+                            lista_mano_1.append("Plains")
+                        elif f==5:
+                            lista_mano_1.append("Swamp")                           
+                    else:
+                        if f==1:
+                            lista_mano_2.append("Forest")
+                            draw(1200, 698, forest)
+                        elif f==2:
+                            lista_mano_2.append("Mountain")
+                            draw(1200, 698, mountain)
+                        elif f==3:
+                            lista_mano_2.append("Island")
+                            draw(1200, 698, island)
+                        elif f==4:
+                            lista_mano_2.append("Plains")
+                            draw(1200, 698, plains)
+                        elif f==5:
+                            lista_mano_2.append("Swamp")
+                            draw(1200, 698, swamp)
+    if turno1:
+        if len(lista_mano_2)==1:
+            draw(mazo1X1, mazo1Y1, mazo1)
+        elif len(lista_mano_2)==2:
+            draw(mazo1X1, mazo1Y1, mazo1)
+            draw(mazo2X2, mazo2Y2, mazo2)
+        elif len(lista_mano_2)==3:
+            draw(mazo1X1, mazo1Y1, mazo1)
+            draw(mazo2X2, mazo2Y2, mazo2)
+            draw(mazo3X3, mazo3Y3, mazo3)
+        elif len(lista_mano_2)==4:
+            draw(mazo1X1, mazo1Y1, mazo1)
+            draw(mazo2X2, mazo2Y2, mazo2)
+            draw(mazo3X3, mazo3Y3, mazo3)
+            draw(mazo4X4, mazo4Y4, mazo4)
+        elif len(lista_mano_2)==5:
+            draw(mazo1X1, mazo1Y1, mazo1)
+            draw(mazo2X2, mazo2Y2, mazo2)
+            draw(mazo3X3, mazo3Y3, mazo3)
+            draw(mazo4X4, mazo4Y4, mazo4)
+            draw(mazo5X5, mazo5Y5, mazo5)
+        elif len(lista_mano_2)==6:
+            draw(mazo1X1, mazo1Y1, mazo1)
+            draw(mazo2X2, mazo2Y2, mazo2)
+            draw(mazo3X3, mazo3Y3, mazo3)
+            draw(mazo4X4, mazo4Y4, mazo4)
+            draw(mazo5X5, mazo5Y5, mazo5)
+            draw(mazo6X6, mazo6Y6, mazo6)
+        elif len(lista_mano_2)==7:
+            draw(mazo1X1, mazo1Y1, mazo1)
+            draw(mazo2X2, mazo2Y2, mazo2)
+            draw(mazo3X3, mazo3Y3, mazo3)
+            draw(mazo4X4, mazo4Y4, mazo4)
+            draw(mazo5X5, mazo5Y5, mazo5)
+            draw(mazo6X6, mazo6Y6, mazo6)
+            draw(mazo7X7, mazo7Y7, mazo7)
+        for j in range(len(lista_mano_1)):
+            if j==0: 
+                if lista_mano_1[j]=="Mountain":
+                    draw(500, 0, mountain)
+                elif lista_mano_1[j]=="Swamp":
+                    draw(500, 0, swamp)
+                elif lista_mano_1[j]=="Island":
+                    draw(500, 0, island)
+                elif lista_mano_1[j]=="Plains":
+                    draw(500, 0, plains)
+                elif lista_mano_1[j]=="Forest":
+                    draw(500, 0, forest)
+            elif j==1:
+                if lista_mano_1[j]=="Mountain":
+                    draw(600, 0, mountain)
+                elif lista_mano_1[j]=="Swamp":
+                    draw(600, 0, swamp)
+                elif lista_mano_1[j]=="Island":
+                    draw(600, 0, island)
+                elif lista_mano_1[j]=="Plains":
+                    draw(600, 0, plains)
+                elif lista_mano_1[j]=="Forest":
+                    draw(600, 0, forest)
+            elif j==2: 
+                if lista_mano_1[j]=="Mountain":
+                    draw(700, 0, mountain)
+                elif lista_mano_1[j]=="Swamp":
+                    draw(700, 0, swamp)
+                elif lista_mano_1[j]=="Island":
+                    draw(700, 0, island)
+                elif lista_mano_1[j]=="Plains":
+                    draw(700, 0, plains)
+                elif lista_mano_1[j]=="Forest":
+                    draw(700, 0, forest)
+            elif j==3:
+                if lista_mano_1[j]=="Mountain":
+                    draw(800, 0, mountain)
+                elif lista_mano_1[j]=="Swamp":
+                    draw(800, 0, swamp)
+                elif lista_mano_1[j]=="Island":
+                    draw(800, 0, island)
+                elif lista_mano_1[j]=="Plains":
+                    draw(800, 0, plains)
+                elif lista_mano_1[j]=="Forest":
+                    draw(800, 0, forest)
+            elif j==4:
+                if lista_mano_1[j]=="Mountain":
+                    draw(900, 0, mountain)
+                elif lista_mano_1[j]=="Swamp":
+                    draw(900, 0, swamp)
+                elif lista_mano_1[j]=="Island":
+                    draw(900, 0, island)
+                elif lista_mano_1[j]=="Plains":
+                    draw(900, 0, plains)
+                elif lista_mano_1[j]=="Forest":
+                    draw(900, 0, forest)
+            elif j==5:
+                if lista_mano_1[j]=="Mountain":
+                    draw(1000, 0, mountain)
+                elif lista_mano_1[j]=="Swamp":
+                    draw(1000, 0, swamp)
+                elif lista_mano_1[j]=="Island":
+                    draw(1000, 0, island)
+                elif lista_mano_1[j]=="Plains":
+                    draw(1000, 0, plains)
+                elif lista_mano_1[j]=="Forest":
+                    draw(1000, 0, forest)  
+            elif j==6:
+                if lista_mano_1[j]=="Mountain":
+                    draw(1100, 0, mountain)
+                elif lista_mano_1[j]=="Swamp":
+                    draw(1100, 0, swamp)
+                elif lista_mano_1[j]=="Island":
+                    draw(1100, 0, island)
+                elif lista_mano_1[j]=="Plains":
+                    draw(1100, 0, plains)
+                elif lista_mano_1[j]=="Forest":
+                    draw(1100, 0, forest)
+            elif j==7:
+                if lista_mano_1[j]=="Mountain":
+                    draw(1200, 0, mountain)
+                elif lista_mano_1[j]=="Swamp":
+                    draw(1200, 0, swamp)
+                elif lista_mano_1[j]=="Island":
+                    draw(1200, 0, island)
+                elif lista_mano_1[j]=="Plains":
+                    draw(1200, 0, plains)
+                elif lista_mano_1[j]=="Forest":
+                    draw(1200, 0, forest)
+    else:
+        for j in range(len(lista_mano_2)):
+            if j==0: 
+                if lista_mano_2[j]=="Mountain":
+                    draw(500, 698, mountain)
+                elif lista_mano_2[j]=="Swamp":
+                    draw(500, 698, swamp)
+                elif lista_mano_2[j]=="Island":
+                    draw(500, 698, island)
+                elif lista_mano_2[j]=="Plains":
+                    draw(500, 698, plains)
+                elif lista_mano_2[j]=="Forest":
+                    draw(500, 698, forest)
+            elif j==1:
+                if lista_mano_2[j]=="Mountain":
+                    draw(600, 698, mountain)
+                elif lista_mano_2[j]=="Swamp":
+                    draw(600, 698, swamp)
+                elif lista_mano_2[j]=="Island":
+                    draw(600, 698, island)
+                elif lista_mano_2[j]=="Plains":
+                    draw(600, 698, plains)
+                elif lista_mano_2[j]=="Forest":
+                    draw(600, 698, forest)
+            elif j==2: 
+                if lista_mano_2[j]=="Mountain":
+                    draw(700, 698, mountain)
+                elif lista_mano_2[j]=="Swamp":
+                    draw(700, 698, swamp)
+                elif lista_mano_2[j]=="Island":
+                    draw(700, 698, island)
+                elif lista_mano_2[j]=="Plains":
+                    draw(700, 698, plains)
+                elif lista_mano_2[j]=="Forest":
+                    draw(700, 698, forest)
+            elif j==3:
+                if lista_mano_2[j]=="Mountain":
+                    draw(800, 698, mountain)
+                elif lista_mano_2[j]=="Swamp":
+                    draw(800, 698, swamp)
+                elif lista_mano_2[j]=="Island":
+                    draw(800, 698, island)
+                elif lista_mano_2[j]=="Plains":
+                    draw(800, 698, plains)
+                elif lista_mano_2[j]=="Forest":
+                    draw(800, 698, forest)
+            elif j==4:
+                if lista_mano_2[j]=="Mountain":
+                    draw(900, 698, mountain)
+                elif lista_mano_2[j]=="Swamp":
+                    draw(900, 698, swamp)
+                elif lista_mano_2[j]=="Island":
+                    draw(900, 698, island)
+                elif lista_mano_2[j]=="Plains":
+                    draw(900, 698, plains)
+                elif lista_mano_2[j]=="Forest":
+                    draw(900, 698, forest)
+            elif j==5:
+                if lista_mano_2[j]=="Mountain":
+                    draw(1000, 698, mountain)
+                elif lista_mano_2[j]=="Swamp":
+                    draw(1000, 698, swamp)
+                elif lista_mano_2[j]=="Island":
+                    draw(1000, 698, island)
+                elif lista_mano_2[j]=="Plains":
+                    draw(1000, 698, plains)
+                elif lista_mano_2[j]=="Forest":
+                    draw(1000, 698, forest)  
+            elif j==6:
+                if lista_mano_2[j]=="Mountain":
+                    draw(1100, 698, mountain)
+                elif lista_mano_2[j]=="Swamp":
+                    draw(1100, 698, swamp)
+                elif lista_mano_2[j]=="Island":
+                    draw(1100, 698, island)
+                elif lista_mano_2[j]=="Plains":
+                    draw(1100, 698, plains)
+                elif lista_mano_2[j]=="Forest":
+                    draw(1100, 698, forest)
+        if len(lista_mano_1)==1:
+            draw(mazo1X, mazo1Y, mazo1)
+        elif len(lista_mano_1)==2:
+            draw(mazo1X, mazo1Y, mazo1)
+            draw(mazo2X, mazo2Y, mazo2)
+        elif len(lista_mano_1)==3:
+            draw(mazo1X, mazo1Y, mazo1)
+            draw(mazo2X, mazo2Y, mazo2)
+            draw(mazo3X, mazo3Y, mazo3)
+        elif len(lista_mano_1)==4:
+            draw(mazo1X, mazo1Y, mazo1)
+            draw(mazo2X, mazo2Y, mazo2)
+            draw(mazo3X, mazo3Y, mazo3)
+            draw(mazo4X, mazo4Y, mazo4)
+        elif len(lista_mano_1)==5:
+            draw(mazo1X, mazo1Y, mazo1)
+            draw(mazo2X, mazo2Y, mazo2)
+            draw(mazo3X, mazo3Y, mazo3)
+            draw(mazo4X, mazo4Y, mazo4)
+            draw(mazo5X, mazo5Y, mazo5)
+        elif len(lista_mano_1)==6:
+            draw(mazo1X, mazo1Y, mazo1)
+            draw(mazo2X, mazo2Y, mazo2)
+            draw(mazo3X, mazo3Y, mazo3)
+            draw(mazo4X, mazo4Y, mazo4)
+            draw(mazo5X, mazo5Y, mazo5)
+            draw(mazo6X, mazo6Y, mazo6)
+        elif len(lista_mano_1)==7:
+            draw(mazo1X, mazo1Y, mazo1)
+            draw(mazo2X, mazo2Y, mazo2)
+            draw(mazo3X, mazo3Y, mazo3)
+            draw(mazo4X, mazo4Y, mazo4)
+            draw(mazo5X, mazo5Y, mazo5)
+            draw(mazo6X, mazo6Y, mazo6)
+            draw(mazo7X, mazo7Y, mazo7)
+
+ 
+    screen.blit(boton_turno, boton_turno_rect)
+    screen.blit(boton_robo, boton_robo_rect)
+    pygame.display.update()
