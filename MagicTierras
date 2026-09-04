@@ -23,7 +23,8 @@ boton_mask_robo = pygame.mask.from_surface(boton_robo)
 boton_robo_rect = pygame.Rect(0, 400, 300, 250)
 boton_robo_pos = (300, 400)
 
-turno1=True
+
+turno1=False
 mazo1=pygame.image.load("carta_atras.jpeg")
 mazo1X=0
 mazo1Y=0
@@ -100,6 +101,25 @@ def primera_mano():
         elif x==5:
             lista_mano_1.append("Swamp")
     return lista_mano_1
+def popup(cantidad):
+    fuente = pygame.font.Font(None, 36)
+
+
+    oscurecer = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
+    oscurecer.fill((0, 0, 0, 150))
+    screen.blit(oscurecer, (0, 0))
+
+
+    caja = pygame.Rect(600, 475, 400, 150)
+    pygame.draw.rect(screen, (50, 50, 50), caja)
+    pygame.draw.rect(screen, (255, 255, 255), caja, 3)
+
+
+    mensaje = fuente.render(F"Debes descartar {cantidad} ", True, (255, 255, 255))
+    texto_rect = mensaje.get_rect(center=caja.center)
+    screen.blit(mensaje, texto_rect)
+
+    pygame.display.flip()
 running = True
 x=1
 tamano_mazo_1=50
@@ -107,8 +127,9 @@ tamano_mazo_2=50
 fuente=pygame.font.Font(None, 36)
 lista_mano_1=primera_mano()
 lista_mano_2=primera_mano()
-screen.fill((255, 110, 0))
+Nrobos=0
 while running:
+    screen.fill((255, 110, 0))
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False 
@@ -119,49 +140,75 @@ while running:
             y = mouse_y - boton_turno_pos[1]
             if 0 <= x < boton_turno.get_width() and 0 <= y < boton_turno.get_height():
                 if boton_mask_turno.get_at((x, y)):
-                    if len(lista_mano_1)-7==1:
-                        texto=fuente.render(F"Debes descartar {len(lista_mano_1)-7} Carta", True, (255, 255, 255))
-                        screen.blit(texto, (0, 100))
-                    elif len(lista_mano_1)-7>1:
-                        texto1=fuente.render(F"Debes descartar {len(lista_mano_1)-7} Cartas", True, (255, 255, 255))
-                        screen.blit(texto1, (0, 100))
+                    if len(lista_mano_1)-7==1 or len(lista_mano_2)-7==1:
+                        if len(lista_mano_1)-7==1:
+                          popup(len(lista_mano_1)-7)
+                        elif len(lista_mano_2)-7==1:
+                            popup(len(lista_mano_2)-7)
+                        pygame.time.delay(1000)
+                    elif len(lista_mano_1)-7>1 or len(lista_mano_2)-7>1:
+                        if len(lista_mano_1)-7==1:
+                            popup(len(lista_mano_1)-7)
+                        elif len(lista_mano_2)-7==1:
+                            popup(len(lista_mano_2)-7)
+                        pygame.time.delay(1000)
                     else:
                             turno1 = not turno1
+                            Nrobos=0
         if event.type == pygame.MOUSEBUTTONDOWN:
             mouse_x, mouse_y = event.pos
 
             x = boton_robo_pos[0] - mouse_x
             y = mouse_y - boton_robo_pos[1]
-            if 0 <= x < boton_robo.get_width() and 0 <= y < boton_robo.get_height():
-                if boton_mask_robo.get_at((x, y)):                
-                    f=random.randint(1, 5)
-                    if turno1:
-                        if f==1:
-                            lista_mano_1.append("Forest")
-                        elif f==2:
-                            lista_mano_1.append("Mountain")
-                        elif f==3:
-                            lista_mano_1.append("Island")
-                        elif f==4:
-                            lista_mano_1.append("Plains")
-                        elif f==5:
-                            lista_mano_1.append("Swamp")                           
-                    else:
-                        if f==1:
-                            lista_mano_2.append("Forest")
-                            draw(1200, 698, forest)
-                        elif f==2:
-                            lista_mano_2.append("Mountain")
-                            draw(1200, 698, mountain)
-                        elif f==3:
-                            lista_mano_2.append("Island")
-                            draw(1200, 698, island)
-                        elif f==4:
-                            lista_mano_2.append("Plains")
-                            draw(1200, 698, plains)
-                        elif f==5:
-                            lista_mano_2.append("Swamp")
-                            draw(1200, 698, swamp)
+            if Nrobos==0:
+                if 0 <= x < boton_robo.get_width() and 0 <= y < boton_robo.get_height():
+                    if boton_mask_robo.get_at((x, y)):                
+                        f=random.randint(1, 5)
+                        if turno1:
+                            if f==1:
+                                lista_mano_1.append("Forest")
+                                draw(1200, 698, forest)
+                                Nrobos+=1
+                            elif f==2:
+                                lista_mano_1.append("Mountain")
+                                draw(1200, 698, mountain)
+                                Nrobos+=1
+                            elif f==3:
+                                lista_mano_1.append("Island")
+                                draw(1200, 698, island)
+                                Nrobos+=1
+                            elif f==4:
+                                lista_mano_1.append("Plains")
+                                draw(1200, 698, forest)
+                                Nrobos+=1
+                            elif f==5:
+                                lista_mano_1.append("Swamp") 
+                                draw(1200, 698, forest)
+                                Nrobos+=1                          
+                        else:
+                            if f==1:
+                                lista_mano_2.append("Forest")
+                                draw(1200, 0, forest)
+                                Nrobos+=1 
+                            elif f==2:
+                                lista_mano_2.append("Mountain")
+                                draw(1200, 0, mountain)
+                                Nrobos+=1 
+                            elif f==3:
+                                lista_mano_2.append("Island")
+                                draw(1200, 0, island)
+                                Nrobos+=1 
+                            elif f==4:
+                                lista_mano_2.append("Plains")
+                                draw(1200, 0, plains)
+                                Nrobos+=1 
+                            elif f==5:
+                                lista_mano_2.append("Swamp")
+                                draw(1200, 0, swamp)
+                                Nrobos+=1 
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if carta_rect.collidepoint(event.pos):
+                print("Forest")                                                
     if turno1:
         if len(lista_mano_2)==1:
             draw(mazo1X1, mazo1Y1, mazo1)
@@ -366,6 +413,17 @@ while running:
                     draw(1100, 698, plains)
                 elif lista_mano_2[j]=="Forest":
                     draw(1100, 698, forest)
+            elif j==7:
+                if lista_mano_2[j]=="Mountain":
+                    draw(1200, 698, mountain)
+                elif lista_mano_2[j]=="Swamp":
+                    draw(1200, 698, swamp)
+                elif lista_mano_2[j]=="Island":
+                    draw(1200, 698, island)
+                elif lista_mano_2[j]=="Plains":
+                    draw(1200, 698, plains)
+                elif lista_mano_2[j]=="Forest":
+                    draw(1200, 698, forest)
         if len(lista_mano_1)==1:
             draw(mazo1X, mazo1Y, mazo1)
         elif len(lista_mano_1)==2:
