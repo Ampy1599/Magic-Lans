@@ -1,466 +1,702 @@
 import random
-
+import sys
 import pygame
-
 
 pygame.init()
 
-screen = pygame.display.set_mode((1500, 950))  
+# 1. Resolución estándar adaptable (1280 x 720)
+ANCHO_PANTALLA, ALTO_PANTALLA = 1280, 720
+screen = pygame.display.set_mode((ANCHO_PANTALLA, ALTO_PANTALLA))  
 
 pygame.display.set_caption("Magic Lands")
-icon=pygame.image.load("Simbolo.jpg")
+icon = pygame.image.load("Simbolo.jpg")
 pygame.display.set_icon(icon)
 
+# --- FONDO DE PANTALLA ---
+fondo_original = pygame.image.load("fondo.jpg")
+fondo_game = pygame.transform.scale(fondo_original, (ANCHO_PANTALLA, ALTO_PANTALLA))
+
+fondo_oscuro = fondo_game.copy()
+capa_oscura = pygame.Surface((ANCHO_PANTALLA, ALTO_PANTALLA), pygame.SRCALPHA)
+capa_oscura.fill((0, 0, 0, 160)) 
+fondo_oscuro.blit(capa_oscura, (0, 0))
+
+# --- FUENTES Y TEXTOS ---
+fuente_titulo_grande = pygame.font.Font(None, 80)
+fuente_subtitulo = pygame.font.Font(None, 36)
+fuente_botones = pygame.font.Font(None, 28)
+fuente_etiquetas = pygame.font.Font(None, 20)
+fuente_titulo = pygame.font.Font(None, 32)
+fuente_aviso = pygame.font.Font(None, 26)
+fuente_reglas = pygame.font.Font(None, 24)
+
+# --- CARGA Y REESCALADO DE IMÁGENES ---
+forest = pygame.image.load("Forest.png")
+mountain = pygame.image.load("Mountain.png")
+swamp = pygame.image.load("Swamp.png")
+island = pygame.image.load("Island.png")
+plains = pygame.image.load("Plains.png")
+
+RAW_CARTAS = {
+    "Forest": forest,
+    "Mountain": mountain,
+    "Swamp": swamp,
+    "Island": island,
+    "Plains": plains
+}
+
+IMAGENES_CARTAS = {
+    nombre: pygame.transform.scale(img, (120, 168))
+    for nombre, img in RAW_CARTAS.items()
+}
+
+IMAGENES_CAMPO = {
+    nombre: pygame.transform.scale(img, (90, 126))
+    for nombre, img in RAW_CARTAS.items()
+}
+
+# --- CONTROL DE ESTADO DEL JUEGO ---
+ESTADO_JUEGO = "MENU"
+ganador_texto = ""
+motivo_victoria = ""
+
+# --- VARIABLES DE NOMBRES Y ENTRADA DE TEXTO ---
+nombre_p1 = "Jugador 1"
+nombre_p2 = "Jugador 2"
+caja_p1_activa = False
+caja_p2_activa = False
+
+caja_input_p1 = pygame.Rect((ANCHO_PANTALLA - 300) // 2, 280, 300, 50)
+caja_input_p2 = pygame.Rect((ANCHO_PANTALLA - 300) // 2, 390, 300, 50)
+btn_iniciar_partida = pygame.Rect((ANCHO_PANTALLA - 250) // 2, 500, 250, 60)
+
+txt_iniciar = fuente_subtitulo.render("Comenzar Partida", True, (255, 255, 255))
+rect_txt_iniciar = txt_iniciar.get_rect(center=btn_iniciar_partida.center)
+
+# --- ELEMENTOS DEL MENÚ PRINCIPAL ---
+btn_menu_jugar = pygame.Rect((ANCHO_PANTALLA - 250) // 2, 300, 250, 60)
+btn_menu_reglas = pygame.Rect((ANCHO_PANTALLA - 250) // 2, 390, 250, 60)
+btn_menu_salir = pygame.Rect((ANCHO_PANTALLA - 250) // 2, 480, 250, 60)
+
+txt_menu_jugar = fuente_subtitulo.render("Jugar", True, (255, 255, 255))
+rect_menu_jugar = txt_menu_jugar.get_rect(center=btn_menu_jugar.center)
+
+txt_menu_reglas = fuente_subtitulo.render("Reglas", True, (255, 255, 255))
+rect_menu_reglas = txt_menu_reglas.get_rect(center=btn_menu_reglas.center)
+
+txt_menu_salir = fuente_subtitulo.render("Salir", True, (255, 255, 255))
+rect_menu_salir = txt_menu_salir.get_rect(center=btn_menu_salir.center)
+
+btn_volver_menu = pygame.Rect((ANCHO_PANTALLA - 200) // 2, 600, 200, 50)
+txt_volver = fuente_botones.render("Volver al Menú", True, (255, 255, 255))
+rect_txt_volver = txt_volver.get_rect(center=btn_volver_menu.center)
+
+btn_victoria_menu = pygame.Rect((ANCHO_PANTALLA - 260) // 2, 500, 260, 60)
+txt_victoria_menu = fuente_subtitulo.render("Ir al Inicio", True, (255, 255, 255))
+rect_txt_victoria_menu = txt_victoria_menu.get_rect(center=btn_victoria_menu.center)
+
+# --- VARIABLES DEL JUEGO DE CARTAS ---
+carta_seleccionada = None
+indice_carta_seleccionada = None
+
+cartas_campo_p1 = []       
+cartas_campo_p2 = []       
+
+cartas_descarte_p1 = []    
+cartas_descarte_p2 = []    
+
+rect_descarte_p1 = pygame.Rect(1120, 200, 90, 126)
+rect_descarte_p2 = pygame.Rect(1120, 380, 90, 126)
+
+modo_destruir = False        
+modo_revivir = False         
+modo_swamp = False           
+modo_bounce = False          
+
+cartas_jugadas_turno = 0     
+
+# Pop-up jugar
+mostrar_popup = False
+ventana_popup = pygame.Surface((400, 320), pygame.SRCALPHA)
+pos_popup = ((ANCHO_PANTALLA - 400) // 2, (ALTO_PANTALLA - 320) // 2)
+
+btn_accion = pygame.Rect(pos_popup[0] + 30, pos_popup[1] + 250, 150, 45)   
+btn_cancelar = pygame.Rect(pos_popup[0] + 220, pos_popup[1] + 250, 150, 45)  
+
+texto_jugar = fuente_botones.render("Jugar", True, (255, 255, 255))
+rect_texto_jugar = texto_jugar.get_rect(center=btn_accion.center)
+
+texto_cancelar = fuente_botones.render("Cancelar", True, (255, 255, 255))
+rect_texto_cancelar = texto_cancelar.get_rect(center=btn_cancelar.center)
+
+# Pop-up ver cementerio
+mostrar_popup_cementerio = False
+cementerio_a_mostrar = []  
+titulo_cementerio = ""
+
+ventana_popup_cem = pygame.Surface((700, 350), pygame.SRCALPHA)
+pos_popup_cem = ((ANCHO_PANTALLA - 700) // 2, (ALTO_PANTALLA - 350) // 2)
+btn_cerrar_cem = pygame.Rect(pos_popup_cem[0] + 275, pos_popup_cem[1] + 280, 150, 45)
+texto_cerrar_cem = fuente_botones.render("Cerrar", True, (255, 255, 255))
+rect_texto_cerrar_cem = texto_cerrar_cem.get_rect(center=btn_cerrar_cem.center)
+
+# Botones interfaz juego
 boton_turno = pygame.image.load("boton_pasar.png")
-boton_turno = pygame.transform.scale(boton_turno, (300, 250))
+boton_turno = pygame.transform.scale(boton_turno, (180, 140))
 boton_mask_turno = pygame.mask.from_surface(boton_turno)
-boton_turno_rect = pygame.Rect(0, 250, 300, 250)
-boton_turno_pos = (300, 250)
+boton_turno_rect = pygame.Rect(20, 200, 180, 140)
+boton_turno_pos = (20, 200)
 
 boton_robo = pygame.image.load("draw.png")
-boton_robo = pygame.transform.scale(boton_robo, (300, 250))
+boton_robo = pygame.transform.scale(boton_robo, (180, 140))
 boton_mask_robo = pygame.mask.from_surface(boton_robo)
-boton_robo_rect = pygame.Rect(0, 400, 300, 250)
-boton_robo_pos = (300, 400)
+boton_robo_rect = pygame.Rect(20, 360, 180, 140)
+boton_robo_pos = (20, 360)
 
+turno1 = True
 
-turno1=False
-mazo1=pygame.image.load("carta_atras.jpeg")
-mazo1X=0
-mazo1Y=0
+mazo_img = pygame.transform.scale(pygame.image.load("carta_atras.jpeg"), (120, 168))
 
-mazo1X1=0
-mazo1Y1=810
-
-mazo2=pygame.image.load("carta_atras.jpeg")
-mazo2X=50
-mazo2Y=0
-
-mazo2X2=50
-mazo2Y2=810
-
-mazo3=pygame.image.load("carta_atras.jpeg")
-mazo3X=100
-mazo3Y=0
-
-mazo3X3=100
-mazo3Y3=810
-
-mazo4=pygame.image.load("carta_atras.jpeg")
-mazo4X=150
-mazo4Y=0
-
-mazo4X4=150
-mazo4Y4=810
-
-mazo5=pygame.image.load("carta_atras.jpeg")
-mazo5X=200
-mazo5Y=0
-
-mazo5X5=200
-mazo5Y5=810
-
-mazo6=pygame.image.load("carta_atras.jpeg")
-mazo6X=250
-mazo6Y=0
-
-mazo6X6=250
-mazo6Y6=810
-
-mazo7=pygame.image.load("carta_atras.jpeg")
-mazo7X=300
-mazo7Y=0
-
-mazo7X7=300
-mazo7Y7=810
-
-forest=pygame.image.load("Forest.png")
-
-mountain=pygame.image.load("Mountain.png")
-
-swamp=pygame.image.load("Swamp.png")
-
-island=pygame.image.load("Island.png")
-
-plains=pygame.image.load("Plains.png")
-
-def draw(x, y,img):
+def draw(x, y, img):
     screen.blit(img, (x, y))
+
 def primera_mano():
-    lista_mano_1=[]
-    for i in range(7):
-        x=random.randint(1, 5)
-        if x==1:
-            lista_mano_1.append("Forest")
-        elif x==2:
-            lista_mano_1.append("Mountain")
-        elif x==3:
-            lista_mano_1.append("Island")
-        elif x==4:
-            lista_mano_1.append("Plains")
-        elif x==5:
-            lista_mano_1.append("Swamp")
-    return lista_mano_1
-def popup(cantidad):
-    fuente = pygame.font.Font(None, 36)
+    lista_mano = []
+    for i in range(5):
+        x = random.randint(1, 5)
+        if x == 1: lista_mano.append("Forest")
+        elif x == 2: lista_mano.append("Mountain")
+        elif x == 3: lista_mano.append("Island")
+        elif x == 4: lista_mano.append("Plains")
+        elif x == 5: lista_mano.append("Swamp")
+    return lista_mano
 
+def reiniciar_juego():
+    global lista_mano_1, lista_mano_2, cartas_campo_p1, cartas_campo_p2
+    global cartas_descarte_p1, cartas_descarte_p2, turno1, Nrobos, cartas_jugadas_turno, modo_destruir, modo_revivir, modo_swamp, modo_bounce
+    lista_mano_1 = primera_mano()
+    lista_mano_2 = primera_mano()
+    cartas_campo_p1 = []
+    cartas_campo_p2 = []
+    cartas_descarte_p1 = []
+    cartas_descarte_p2 = []
+    turno1 = random.choice([True, False])
+    Nrobos = 1 
+    cartas_jugadas_turno = 0
+    modo_destruir = False
+    modo_revivir = False
+    modo_swamp = False
+    modo_bounce = False
 
+    jugador_inicio = nombre_p1 if turno1 else nombre_p2
+    popup_mensaje(f"¡Sorteo! Empieza {jugador_inicio} (no roba en su primer turno)")
+    pygame.time.delay(2000)
+
+def verificar_victoria(campo_jugador):
+    if len(campo_jugador) == 0:
+        return False, ""
+    
+    conteo_cartas = {}
+    for carta in campo_jugador:
+        conteo_cartas[carta] = conteo_cartas.get(carta, 0) + 1
+        if conteo_cartas[carta] >= 5:
+            return True, f"¡Consiguió 5 cartas de {carta}!"
+
+    tipos_unicos = set(campo_jugador)
+    if len(tipos_unicos) >= 5:
+        return True, "¡Consiguió las 5 tierras diferentes!"
+
+    return False, ""
+
+def popup_mensaje(mensaje_texto):
+    fuente = pygame.font.Font(None, 26)
     oscurecer = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
     oscurecer.fill((0, 0, 0, 150))
     screen.blit(oscurecer, (0, 0))
 
-
-    caja = pygame.Rect(600, 475, 400, 150)
+    caja = pygame.Rect((ANCHO_PANTALLA - 520) // 2, (ALTO_PANTALLA - 120) // 2, 520, 120)
     pygame.draw.rect(screen, (50, 50, 50), caja)
     pygame.draw.rect(screen, (255, 255, 255), caja, 3)
 
-
-    mensaje = fuente.render(F"Debes descartar {cantidad} ", True, (255, 255, 255))
+    mensaje = fuente.render(mensaje_texto, True, (255, 255, 255))
     texto_rect = mensaje.get_rect(center=caja.center)
     screen.blit(mensaje, texto_rect)
-
     pygame.display.flip()
+
 running = True
-x=1
-tamano_mazo_1=50
-tamano_mazo_2=50
-fuente=pygame.font.Font(None, 36)
-lista_mano_1=primera_mano()
-lista_mano_2=primera_mano()
-Nrobos=0
+lista_mano_1 = primera_mano()
+lista_mano_2 = primera_mano()
+Nrobos = 0
+
 while running:
-    screen.fill((255, 110, 0))
+    
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False 
-        if event.type == pygame.MOUSEBUTTONDOWN:
+            running = False
+
+        if event.type == pygame.KEYDOWN and ESTADO_JUEGO == "NOMBRES":
+            if caja_p1_activa:
+                if event.key == pygame.K_BACKSPACE:
+                    nombre_p1 = nombre_p1[:-1]
+                elif len(nombre_p1) < 12 and event.unicode.isprintable():
+                    nombre_p1 += event.unicode
+            elif caja_p2_activa:
+                if event.key == pygame.K_BACKSPACE:
+                    nombre_p2 = nombre_p2[:-1]
+                elif len(nombre_p2) < 12 and event.unicode.isprintable():
+                    nombre_p2 += event.unicode
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_x, mouse_y = event.pos
 
-            x = boton_turno_pos[0] - mouse_x
-            y = mouse_y - boton_turno_pos[1]
-            if 0 <= x < boton_turno.get_width() and 0 <= y < boton_turno.get_height():
-                if boton_mask_turno.get_at((x, y)):
-                    if len(lista_mano_1)-7==1 or len(lista_mano_2)-7==1:
-                        if len(lista_mano_1)-7==1:
-                          popup(len(lista_mano_1)-7)
-                        elif len(lista_mano_2)-7==1:
-                            popup(len(lista_mano_2)-7)
-                        pygame.time.delay(1000)
-                    elif len(lista_mano_1)-7>1 or len(lista_mano_2)-7>1:
-                        if len(lista_mano_1)-7==1:
-                            popup(len(lista_mano_1)-7)
-                        elif len(lista_mano_2)-7==1:
-                            popup(len(lista_mano_2)-7)
-                        pygame.time.delay(1000)
+            # --- MENÚ PRINCIPAL ---
+            if ESTADO_JUEGO == "MENU":
+                if btn_menu_jugar.collidepoint(event.pos):
+                    ESTADO_JUEGO = "NOMBRES"
+                elif btn_menu_reglas.collidepoint(event.pos):
+                    ESTADO_JUEGO = "REGLAS"
+                elif btn_menu_salir.collidepoint(event.pos):
+                    running = False
+
+            # --- PANTALLA REGISTRO DE NOMBRES ---
+            elif ESTADO_JUEGO == "NOMBRES":
+                if caja_input_p1.collidepoint(event.pos):
+                    caja_p1_activa = True
+                    caja_p2_activa = False
+                    nombre_p1 = ""  # Limpia el campo al hacer clic
+                elif caja_input_p2.collidepoint(event.pos):
+                    caja_p1_activa = False
+                    caja_p2_activa = True
+                    nombre_p2 = ""  # Limpia el campo al hacer clic
+                else:
+                    caja_p1_activa = False
+                    caja_p2_activa = False
+
+                if btn_iniciar_partida.collidepoint(event.pos):
+                    if nombre_p1.strip() == "": nombre_p1 = "Jugador 1"
+                    if nombre_p2.strip() == "": nombre_p2 = "Jugador 2"
+                    reiniciar_juego()
+                    ESTADO_JUEGO = "JUEGO"
+
+            # --- PANTALLA DE REGLAS ---
+            elif ESTADO_JUEGO == "REGLAS":
+                if btn_volver_menu.collidepoint(event.pos):
+                    ESTADO_JUEGO = "MENU"
+
+            # --- PANTALLA DE VICTORIA ---
+            elif ESTADO_JUEGO == "VICTORIA":
+                if btn_victoria_menu.collidepoint(event.pos):
+                    ESTADO_JUEGO = "MENU"
+
+            # --- PANTALLA DE JUEGO ---
+            elif ESTADO_JUEGO == "JUEGO":
+
+                # 1. LÓGICA ISLAND
+                if modo_bounce:
+                    campo_enemigo = cartas_campo_p2 if turno1 else cartas_campo_p1
+                    mano_enemiga = lista_mano_2 if turno1 else lista_mano_1
+                    y_campo_enemigo = 380 if turno1 else 200
+
+                    devuelta = False
+                    for i in range(len(campo_enemigo) - 1, -1, -1):
+                        x_carta = 320 + (i * 75)
+                        rect_carta_campo = pygame.Rect(x_carta, y_campo_enemigo, 90, 126)
+                        
+                        if rect_carta_campo.collidepoint(event.pos):
+                            carta_devuelta = campo_enemigo.pop(i)
+                            mano_enemiga.append(carta_devuelta)
+                            devuelta = True
+                            break
+
+                    if devuelta or len(campo_enemigo) == 0:
+                        modo_bounce = False
+
+                # 2. LÓGICA SWAMP
+                elif modo_swamp:
+                    mano_enemiga = lista_mano_2 if turno1 else lista_mano_1
+                    cementerio_enemigo = cartas_descarte_p2 if turno1 else cartas_descarte_p1
+                    y_mano_enemiga = 550 if turno1 else 0
+
+                    for i in range(len(mano_enemiga) - 1, -1, -1):
+                        x_carta = 320 + (i * 85)
+                        rect_carta = pygame.Rect(x_carta, y_mano_enemiga, 120, 168)
+
+                        if rect_carta.collidepoint(event.pos):
+                            carta_descartada = mano_enemiga.pop(i)
+                            cementerio_enemigo.append(carta_descartada)
+                            modo_swamp = False
+                            break
+
+                # 3. LÓGICA MONTAÑA
+                elif modo_destruir:
+                    campo_enemigo = cartas_campo_p2 if turno1 else cartas_campo_p1
+                    cementerio_enemigo = cartas_descarte_p2 if turno1 else cartas_descarte_p1
+                    y_campo_enemigo = 380 if turno1 else 200
+
+                    destruida = False
+                    for i in range(len(campo_enemigo) - 1, -1, -1):
+                        x_carta = 320 + (i * 75)
+                        rect_carta_campo = pygame.Rect(x_carta, y_campo_enemigo, 90, 126)
+                        
+                        if rect_carta_campo.collidepoint(event.pos):
+                            carta_eliminada = campo_enemigo.pop(i)
+                            cementerio_enemigo.append(carta_eliminada)
+                            destruida = True
+                            break
+
+                    if destruida or len(campo_enemigo) == 0:
+                        modo_destruir = False
+
+                # 4. LÓGICA FOREST
+                elif mostrar_popup_cementerio and modo_revivir:
+                    if btn_cerrar_cem.collidepoint(event.pos):
+                        mostrar_popup_cementerio = False
+                        modo_revivir = False
                     else:
-                            turno1 = not turno1
-                            Nrobos=0
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            mouse_x, mouse_y = event.pos
+                        cementerio_propio = cartas_descarte_p1 if turno1 else cartas_descarte_p2
+                        mano_propia = lista_mano_1 if turno1 else lista_mano_2
+                        
+                        for idx, nombre in enumerate(cementerio_propio):
+                            pos_x_cem = pos_popup_cem[0] + 30 + (idx * 100)
+                            pos_y_cem = pos_popup_cem[1] + 80
+                            rect_carta_cem = pygame.Rect(pos_x_cem, pos_y_cem, 90, 126)
+                            
+                            if rect_carta_cem.collidepoint(event.pos):
+                                carta_revivida = cementerio_propio.pop(idx)
+                                mano_propia.append(carta_revivida)
+                                mostrar_popup_cementerio = False
+                                modo_revivir = False
+                                break
 
-            x = boton_robo_pos[0] - mouse_x
-            y = mouse_y - boton_robo_pos[1]
-            if Nrobos==0:
-                if 0 <= x < boton_robo.get_width() and 0 <= y < boton_robo.get_height():
-                    if boton_mask_robo.get_at((x, y)):                
-                        f=random.randint(1, 5)
-                        if turno1:
-                            if f==1:
-                                lista_mano_1.append("Forest")
-                                draw(1200, 698, forest)
-                                Nrobos+=1
-                            elif f==2:
-                                lista_mano_1.append("Mountain")
-                                draw(1200, 698, mountain)
-                                Nrobos+=1
-                            elif f==3:
-                                lista_mano_1.append("Island")
-                                draw(1200, 698, island)
-                                Nrobos+=1
-                            elif f==4:
-                                lista_mano_1.append("Plains")
-                                draw(1200, 698, forest)
-                                Nrobos+=1
-                            elif f==5:
-                                lista_mano_1.append("Swamp") 
-                                draw(1200, 698, forest)
-                                Nrobos+=1                          
+                elif mostrar_popup_cementerio:
+                    if btn_cerrar_cem.collidepoint(event.pos):
+                        mostrar_popup_cementerio = False
+
+                elif mostrar_popup:
+                    mano_actual = lista_mano_1 if turno1 else lista_mano_2
+                    
+                    if btn_cancelar.collidepoint(event.pos):
+                        mostrar_popup = False
+
+                    elif btn_accion.collidepoint(event.pos):
+                        if cartas_jugadas_turno >= 1:
+                            popup_mensaje("¡Solo puedes jugar 1 carta por turno!")
+                            pygame.time.delay(1200)
                         else:
-                            if f==1:
-                                lista_mano_2.append("Forest")
-                                draw(1200, 0, forest)
-                                Nrobos+=1 
-                            elif f==2:
-                                lista_mano_2.append("Mountain")
-                                draw(1200, 0, mountain)
-                                Nrobos+=1 
-                            elif f==3:
-                                lista_mano_2.append("Island")
-                                draw(1200, 0, island)
-                                Nrobos+=1 
-                            elif f==4:
-                                lista_mano_2.append("Plains")
-                                draw(1200, 0, plains)
-                                Nrobos+=1 
-                            elif f==5:
-                                lista_mano_2.append("Swamp")
-                                draw(1200, 0, swamp)
-                                Nrobos+=1 
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if carta_rect.collidepoint(event.pos):
-                print("Forest")                                                
-    if turno1:
-        if len(lista_mano_2)==1:
-            draw(mazo1X1, mazo1Y1, mazo1)
-        elif len(lista_mano_2)==2:
-            draw(mazo1X1, mazo1Y1, mazo1)
-            draw(mazo2X2, mazo2Y2, mazo2)
-        elif len(lista_mano_2)==3:
-            draw(mazo1X1, mazo1Y1, mazo1)
-            draw(mazo2X2, mazo2Y2, mazo2)
-            draw(mazo3X3, mazo3Y3, mazo3)
-        elif len(lista_mano_2)==4:
-            draw(mazo1X1, mazo1Y1, mazo1)
-            draw(mazo2X2, mazo2Y2, mazo2)
-            draw(mazo3X3, mazo3Y3, mazo3)
-            draw(mazo4X4, mazo4Y4, mazo4)
-        elif len(lista_mano_2)==5:
-            draw(mazo1X1, mazo1Y1, mazo1)
-            draw(mazo2X2, mazo2Y2, mazo2)
-            draw(mazo3X3, mazo3Y3, mazo3)
-            draw(mazo4X4, mazo4Y4, mazo4)
-            draw(mazo5X5, mazo5Y5, mazo5)
-        elif len(lista_mano_2)==6:
-            draw(mazo1X1, mazo1Y1, mazo1)
-            draw(mazo2X2, mazo2Y2, mazo2)
-            draw(mazo3X3, mazo3Y3, mazo3)
-            draw(mazo4X4, mazo4Y4, mazo4)
-            draw(mazo5X5, mazo5Y5, mazo5)
-            draw(mazo6X6, mazo6Y6, mazo6)
-        elif len(lista_mano_2)==7:
-            draw(mazo1X1, mazo1Y1, mazo1)
-            draw(mazo2X2, mazo2Y2, mazo2)
-            draw(mazo3X3, mazo3Y3, mazo3)
-            draw(mazo4X4, mazo4Y4, mazo4)
-            draw(mazo5X5, mazo5Y5, mazo5)
-            draw(mazo6X6, mazo6Y6, mazo6)
-            draw(mazo7X7, mazo7Y7, mazo7)
-        for j in range(len(lista_mano_1)):
-            if j==0: 
-                if lista_mano_1[j]=="Mountain":
-                    draw(500, 0, mountain)
-                elif lista_mano_1[j]=="Swamp":
-                    draw(500, 0, swamp)
-                elif lista_mano_1[j]=="Island":
-                    draw(500, 0, island)
-                elif lista_mano_1[j]=="Plains":
-                    draw(500, 0, plains)
-                elif lista_mano_1[j]=="Forest":
-                    draw(500, 0, forest)
-            elif j==1:
-                if lista_mano_1[j]=="Mountain":
-                    draw(600, 0, mountain)
-                elif lista_mano_1[j]=="Swamp":
-                    draw(600, 0, swamp)
-                elif lista_mano_1[j]=="Island":
-                    draw(600, 0, island)
-                elif lista_mano_1[j]=="Plains":
-                    draw(600, 0, plains)
-                elif lista_mano_1[j]=="Forest":
-                    draw(600, 0, forest)
-            elif j==2: 
-                if lista_mano_1[j]=="Mountain":
-                    draw(700, 0, mountain)
-                elif lista_mano_1[j]=="Swamp":
-                    draw(700, 0, swamp)
-                elif lista_mano_1[j]=="Island":
-                    draw(700, 0, island)
-                elif lista_mano_1[j]=="Plains":
-                    draw(700, 0, plains)
-                elif lista_mano_1[j]=="Forest":
-                    draw(700, 0, forest)
-            elif j==3:
-                if lista_mano_1[j]=="Mountain":
-                    draw(800, 0, mountain)
-                elif lista_mano_1[j]=="Swamp":
-                    draw(800, 0, swamp)
-                elif lista_mano_1[j]=="Island":
-                    draw(800, 0, island)
-                elif lista_mano_1[j]=="Plains":
-                    draw(800, 0, plains)
-                elif lista_mano_1[j]=="Forest":
-                    draw(800, 0, forest)
-            elif j==4:
-                if lista_mano_1[j]=="Mountain":
-                    draw(900, 0, mountain)
-                elif lista_mano_1[j]=="Swamp":
-                    draw(900, 0, swamp)
-                elif lista_mano_1[j]=="Island":
-                    draw(900, 0, island)
-                elif lista_mano_1[j]=="Plains":
-                    draw(900, 0, plains)
-                elif lista_mano_1[j]=="Forest":
-                    draw(900, 0, forest)
-            elif j==5:
-                if lista_mano_1[j]=="Mountain":
-                    draw(1000, 0, mountain)
-                elif lista_mano_1[j]=="Swamp":
-                    draw(1000, 0, swamp)
-                elif lista_mano_1[j]=="Island":
-                    draw(1000, 0, island)
-                elif lista_mano_1[j]=="Plains":
-                    draw(1000, 0, plains)
-                elif lista_mano_1[j]=="Forest":
-                    draw(1000, 0, forest)  
-            elif j==6:
-                if lista_mano_1[j]=="Mountain":
-                    draw(1100, 0, mountain)
-                elif lista_mano_1[j]=="Swamp":
-                    draw(1100, 0, swamp)
-                elif lista_mano_1[j]=="Island":
-                    draw(1100, 0, island)
-                elif lista_mano_1[j]=="Plains":
-                    draw(1100, 0, plains)
-                elif lista_mano_1[j]=="Forest":
-                    draw(1100, 0, forest)
-            elif j==7:
-                if lista_mano_1[j]=="Mountain":
-                    draw(1200, 0, mountain)
-                elif lista_mano_1[j]=="Swamp":
-                    draw(1200, 0, swamp)
-                elif lista_mano_1[j]=="Island":
-                    draw(1200, 0, island)
-                elif lista_mano_1[j]=="Plains":
-                    draw(1200, 0, plains)
-                elif lista_mano_1[j]=="Forest":
-                    draw(1200, 0, forest)
-    else:
-        for j in range(len(lista_mano_2)):
-            if j==0: 
-                if lista_mano_2[j]=="Mountain":
-                    draw(500, 698, mountain)
-                elif lista_mano_2[j]=="Swamp":
-                    draw(500, 698, swamp)
-                elif lista_mano_2[j]=="Island":
-                    draw(500, 698, island)
-                elif lista_mano_2[j]=="Plains":
-                    draw(500, 698, plains)
-                elif lista_mano_2[j]=="Forest":
-                    draw(500, 698, forest)
-            elif j==1:
-                if lista_mano_2[j]=="Mountain":
-                    draw(600, 698, mountain)
-                elif lista_mano_2[j]=="Swamp":
-                    draw(600, 698, swamp)
-                elif lista_mano_2[j]=="Island":
-                    draw(600, 698, island)
-                elif lista_mano_2[j]=="Plains":
-                    draw(600, 698, plains)
-                elif lista_mano_2[j]=="Forest":
-                    draw(600, 698, forest)
-            elif j==2: 
-                if lista_mano_2[j]=="Mountain":
-                    draw(700, 698, mountain)
-                elif lista_mano_2[j]=="Swamp":
-                    draw(700, 698, swamp)
-                elif lista_mano_2[j]=="Island":
-                    draw(700, 698, island)
-                elif lista_mano_2[j]=="Plains":
-                    draw(700, 698, plains)
-                elif lista_mano_2[j]=="Forest":
-                    draw(700, 698, forest)
-            elif j==3:
-                if lista_mano_2[j]=="Mountain":
-                    draw(800, 698, mountain)
-                elif lista_mano_2[j]=="Swamp":
-                    draw(800, 698, swamp)
-                elif lista_mano_2[j]=="Island":
-                    draw(800, 698, island)
-                elif lista_mano_2[j]=="Plains":
-                    draw(800, 698, plains)
-                elif lista_mano_2[j]=="Forest":
-                    draw(800, 698, forest)
-            elif j==4:
-                if lista_mano_2[j]=="Mountain":
-                    draw(900, 698, mountain)
-                elif lista_mano_2[j]=="Swamp":
-                    draw(900, 698, swamp)
-                elif lista_mano_2[j]=="Island":
-                    draw(900, 698, island)
-                elif lista_mano_2[j]=="Plains":
-                    draw(900, 698, plains)
-                elif lista_mano_2[j]=="Forest":
-                    draw(900, 698, forest)
-            elif j==5:
-                if lista_mano_2[j]=="Mountain":
-                    draw(1000, 698, mountain)
-                elif lista_mano_2[j]=="Swamp":
-                    draw(1000, 698, swamp)
-                elif lista_mano_2[j]=="Island":
-                    draw(1000, 698, island)
-                elif lista_mano_2[j]=="Plains":
-                    draw(1000, 698, plains)
-                elif lista_mano_2[j]=="Forest":
-                    draw(1000, 698, forest)  
-            elif j==6:
-                if lista_mano_2[j]=="Mountain":
-                    draw(1100, 698, mountain)
-                elif lista_mano_2[j]=="Swamp":
-                    draw(1100, 698, swamp)
-                elif lista_mano_2[j]=="Island":
-                    draw(1100, 698, island)
-                elif lista_mano_2[j]=="Plains":
-                    draw(1100, 698, plains)
-                elif lista_mano_2[j]=="Forest":
-                    draw(1100, 698, forest)
-            elif j==7:
-                if lista_mano_2[j]=="Mountain":
-                    draw(1200, 698, mountain)
-                elif lista_mano_2[j]=="Swamp":
-                    draw(1200, 698, swamp)
-                elif lista_mano_2[j]=="Island":
-                    draw(1200, 698, island)
-                elif lista_mano_2[j]=="Plains":
-                    draw(1200, 698, plains)
-                elif lista_mano_2[j]=="Forest":
-                    draw(1200, 698, forest)
-        if len(lista_mano_1)==1:
-            draw(mazo1X, mazo1Y, mazo1)
-        elif len(lista_mano_1)==2:
-            draw(mazo1X, mazo1Y, mazo1)
-            draw(mazo2X, mazo2Y, mazo2)
-        elif len(lista_mano_1)==3:
-            draw(mazo1X, mazo1Y, mazo1)
-            draw(mazo2X, mazo2Y, mazo2)
-            draw(mazo3X, mazo3Y, mazo3)
-        elif len(lista_mano_1)==4:
-            draw(mazo1X, mazo1Y, mazo1)
-            draw(mazo2X, mazo2Y, mazo2)
-            draw(mazo3X, mazo3Y, mazo3)
-            draw(mazo4X, mazo4Y, mazo4)
-        elif len(lista_mano_1)==5:
-            draw(mazo1X, mazo1Y, mazo1)
-            draw(mazo2X, mazo2Y, mazo2)
-            draw(mazo3X, mazo3Y, mazo3)
-            draw(mazo4X, mazo4Y, mazo4)
-            draw(mazo5X, mazo5Y, mazo5)
-        elif len(lista_mano_1)==6:
-            draw(mazo1X, mazo1Y, mazo1)
-            draw(mazo2X, mazo2Y, mazo2)
-            draw(mazo3X, mazo3Y, mazo3)
-            draw(mazo4X, mazo4Y, mazo4)
-            draw(mazo5X, mazo5Y, mazo5)
-            draw(mazo6X, mazo6Y, mazo6)
-        elif len(lista_mano_1)==7:
-            draw(mazo1X, mazo1Y, mazo1)
-            draw(mazo2X, mazo2Y, mazo2)
-            draw(mazo3X, mazo3Y, mazo3)
-            draw(mazo4X, mazo4Y, mazo4)
-            draw(mazo5X, mazo5Y, mazo5)
-            draw(mazo6X, mazo6Y, mazo6)
-            draw(mazo7X, mazo7Y, mazo7)
+                            if indice_carta_seleccionada is not None and indice_carta_seleccionada < len(mano_actual):
+                                carta_quitada = mano_actual.pop(indice_carta_seleccionada)
+                                
+                                if turno1:
+                                    cartas_campo_p1.append(carta_quitada)
+                                else:
+                                    cartas_campo_p2.append(carta_quitada)
 
- 
-    screen.blit(boton_turno, boton_turno_rect)
-    screen.blit(boton_robo, boton_robo_rect)
+                                cartas_jugadas_turno += 1
+
+                                campo_actual = cartas_campo_p1 if turno1 else cartas_campo_p2
+                                gano, motivo = verificar_victoria(campo_actual)
+                                if gano:
+                                    ganador_texto = f"¡{nombre_p1 if turno1 else nombre_p2} GANA!"
+                                    motivo_victoria = motivo
+                                    ESTADO_JUEGO = "VICTORIA"
+
+                                campo_enemigo = cartas_campo_p2 if turno1 else cartas_campo_p1
+                                mano_enemiga = lista_mano_2 if turno1 else lista_mano_1
+
+                                # EFECTO SWAMP (SÓLO SE DESCARTA)
+                                if carta_quitada == "Swamp" and len(mano_enemiga) > 0 and ESTADO_JUEGO == "JUEGO":
+                                    modo_swamp = True
+
+                                # EFECTO MONTAÑA
+                                if carta_quitada == "Mountain" and len(campo_enemigo) > 0 and ESTADO_JUEGO == "JUEGO":
+                                    modo_destruir = True
+
+                                # EFECTO BOSQUE (FOREST)
+                                cementerio_propio = cartas_descarte_p1 if turno1 else cartas_descarte_p2
+                                if carta_quitada == "Forest" and len(cementerio_propio) > 0 and ESTADO_JUEGO == "JUEGO":
+                                    modo_revivir = True
+                                    cementerio_a_mostrar = cementerio_propio
+                                    titulo_cementerio = f"Efecto Bosque: Elige una carta para revivir ({nombre_p1 if turno1 else nombre_p2})"
+                                    mostrar_popup_cementerio = True
+
+                                # EFECTO ISLAND (ISLA)
+                                if carta_quitada == "Island" and len(campo_enemigo) > 0 and ESTADO_JUEGO == "JUEGO":
+                                    modo_bounce = True
+
+                                # EFECTO PLAINS (LLANURA)
+                                if carta_quitada == "Plains" and ESTADO_JUEGO == "JUEGO":
+                                    f = random.randint(1, 5)
+                                    cartas_posibles = ["Forest", "Mountain", "Island", "Plains", "Swamp"]
+                                    carta_extra = cartas_posibles[f - 1]
+                                    if turno1:
+                                        lista_mano_1.append(carta_extra)
+                                    else:
+                                        lista_mano_2.append(carta_extra)
+
+                        mostrar_popup = False
+
+                else:
+                    if rect_descarte_p1.collidepoint(event.pos):
+                        cementerio_a_mostrar = cartas_descarte_p1
+                        titulo_cementerio = f"Cementerio - {nombre_p1}"
+                        mostrar_popup_cementerio = True
+
+                    elif rect_descarte_p2.collidepoint(event.pos):
+                        cementerio_a_mostrar = cartas_descarte_p2
+                        titulo_cementerio = f"Cementerio - {nombre_p2}"
+                        mostrar_popup_cementerio = True
+
+                    else:
+                        mano_actual = lista_mano_1 if turno1 else lista_mano_2
+                        y_mano = 0 if turno1 else 550
+                        total_cartas = len(mano_actual)
+                        
+                        for i in range(total_cartas - 1, -1, -1):
+                            nombre_carta = mano_actual[i]
+                            x_carta = 320 + (i * 85)
+                            rect_carta = pygame.Rect(x_carta, y_mano, 120, 168)
+                            
+                            if rect_carta.collidepoint(event.pos):
+                                carta_seleccionada = IMAGENES_CARTAS[nombre_carta]
+                                indice_carta_seleccionada = i
+                                mostrar_popup = True
+                                break
+
+                    # Boton Pasar Turno
+                    x_t = mouse_x - boton_turno_pos[0]
+                    y_t = mouse_y - boton_turno_pos[1]
+                    if 0 <= x_t < boton_turno.get_width() and 0 <= y_t < boton_turno.get_height():
+                        if boton_mask_turno.get_at((x_t, y_t)):
+                            turno1 = not turno1
+                            Nrobos = 0
+                            cartas_jugadas_turno = 0
+
+                    # Boton Robar Carta
+                    x_r = mouse_x - boton_robo_pos[0]
+                    y_r = mouse_y - boton_robo_pos[1]
+                    if Nrobos == 0:
+                        if 0 <= x_r < boton_robo.get_width() and 0 <= y_r < boton_robo.get_height():
+                            if boton_mask_robo.get_at((x_r, y_r)):
+                                f = random.randint(1, 5)
+                                cartas_posibles = ["Forest", "Mountain", "Island", "Plains", "Swamp"]
+                                carta_robada = cartas_posibles[f - 1]
+                                
+                                if turno1:
+                                    lista_mano_1.append(carta_robada)
+                                else:
+                                    lista_mano_2.append(carta_robada)
+                                
+                                Nrobos += 1
+
+    # ==========================================
+    # RENDERIZADO / DIBUJADO
+    # ==========================================
+
+    # --- PANTALLA: MENÚ PRINCIPAL ---
+    if ESTADO_JUEGO == "MENU":
+        screen.blit(fondo_oscuro, (0, 0))
+
+        txt_titulo_game = fuente_titulo_grande.render("MAGIC LANDS", True, (255, 215, 0))
+        rect_titulo_game = txt_titulo_game.get_rect(center=(ANCHO_PANTALLA // 2, 150))
+        screen.blit(txt_titulo_game, rect_titulo_game)
+
+        pygame.draw.rect(screen, (40, 180, 90), btn_menu_jugar)
+        screen.blit(txt_menu_jugar, rect_menu_jugar)
+
+        pygame.draw.rect(screen, (50, 120, 200), btn_menu_reglas)
+        screen.blit(txt_menu_reglas, rect_menu_reglas)
+
+        pygame.draw.rect(screen, (200, 50, 50), btn_menu_salir)
+        screen.blit(txt_menu_salir, rect_menu_salir)
+
+    # --- PANTALLA: INGRESO DE NOMBRES ---
+    elif ESTADO_JUEGO == "NOMBRES":
+        screen.blit(fondo_oscuro, (0, 0))
+
+        txt_tit_nom = fuente_titulo_grande.render("JUGADORES", True, (255, 255, 255))
+        rect_tit_nom = txt_tit_nom.get_rect(center=(ANCHO_PANTALLA // 2, 120))
+        screen.blit(txt_tit_nom, rect_tit_nom)
+
+        lbl_p1 = fuente_subtitulo.render("Nombre Jugador 1:", True, (255, 255, 255))
+        screen.blit(lbl_p1, (caja_input_p1.x, caja_input_p1.y - 35))
+        color_p1 = (255, 255, 255) if caja_p1_activa else (100, 100, 100)
+        pygame.draw.rect(screen, (30, 30, 30), caja_input_p1)
+        pygame.draw.rect(screen, color_p1, caja_input_p1, 2)
+        txt_p1_val = fuente_subtitulo.render(nombre_p1, True, (255, 255, 255))
+        screen.blit(txt_p1_val, (caja_input_p1.x + 10, caja_input_p1.y + 10))
+
+        lbl_p2 = fuente_subtitulo.render("Nombre Jugador 2:", True, (255, 255, 255))
+        screen.blit(lbl_p2, (caja_input_p2.x, caja_input_p2.y - 35))
+        color_p2 = (255, 255, 255) if caja_p2_activa else (100, 100, 100)
+        pygame.draw.rect(screen, (30, 30, 30), caja_input_p2)
+        pygame.draw.rect(screen, color_p2, caja_input_p2, 2)
+        txt_p2_val = fuente_subtitulo.render(nombre_p2, True, (255, 255, 255))
+        screen.blit(txt_p2_val, (caja_input_p2.x + 10, caja_input_p2.y + 10))
+
+        pygame.draw.rect(screen, (40, 180, 90), btn_iniciar_partida)
+        screen.blit(txt_iniciar, rect_txt_iniciar)
+
+    # --- PANTALLA: REGLAS ---
+    elif ESTADO_JUEGO == "REGLAS":
+        screen.blit(fondo_oscuro, (0, 0))
+
+        txt_tit_reglas = fuente_titulo_grande.render("REGLAS DEL JUEGO", True, (255, 255, 255))
+        rect_tit_reglas = txt_tit_reglas.get_rect(center=(ANCHO_PANTALLA // 2, 70))
+        screen.blit(txt_tit_reglas, rect_tit_reglas)
+
+        reglas_texto = [
+            "1. Cada jugador empieza con una mano de 5 cartas.",
+            "2. El jugador que inicia por sorteo NO roba carta en su primer turno.",
+            "3. Solo puedes robar 1 carta por turno usando el botón 'Robar'.",
+            "4. Solo puedes JUGAR 1 carta por turno.",
+            "5. EFECTO MONTAÑA: Selecciona y destruye una carta del campo enemigo.",
+            "6. EFECTO BOSQUE (Forest): Elige y revive una carta de tu cementerio.",
+            "7. EFECTO PANTANO (Swamp): Quita una carta enemiga (y se queda en tu campo).",
+            "8. EFECTO ISLA (Island): Selecciona una carta del campo enemigo y súbela a su mano.",
+            "9. EFECTO LLANURA (Plains): Robas 1 carta inmediatamente al jugarla.",
+            "10. CONDICIONES DE VICTORIA: Tener 5 tierras DIFERENTES o 5 IGUALES en juego."
+        ]
+
+        for idx, linea in enumerate(reglas_texto):
+            txt_linea = fuente_reglas.render(linea, True, (220, 220, 220))
+            screen.blit(txt_linea, (120, 130 + (idx * 36)))
+
+        pygame.draw.rect(screen, (200, 50, 50), btn_volver_menu)
+        screen.blit(txt_volver, rect_txt_volver)
+
+    # --- PANTALLA: VICTORIA ---
+    elif ESTADO_JUEGO == "VICTORIA":
+        screen.blit(fondo_oscuro, (0, 0))
+
+        txt_vic = fuente_titulo_grande.render(ganador_texto, True, (255, 215, 0))
+        rect_vic = txt_vic.get_rect(center=(ANCHO_PANTALLA // 2, 220))
+        screen.blit(txt_vic, rect_vic)
+
+        txt_motivo = fuente_subtitulo.render(motivo_victoria, True, (255, 255, 255))
+        rect_motivo = txt_motivo.get_rect(center=(ANCHO_PANTALLA // 2, 330))
+        screen.blit(txt_motivo, rect_motivo)
+
+        pygame.draw.rect(screen, (40, 180, 90), btn_victoria_menu)
+        screen.blit(txt_victoria_menu, rect_txt_victoria_menu)
+
+    # --- PANTALLA: JUEGO PRINCIPAL ---
+    elif ESTADO_JUEGO == "JUEGO":
+        screen.blit(fondo_game, (0, 0))
+
+        if turno1:
+            for k in range(len(lista_mano_2)):
+                draw(320 + (k * 85), 550, mazo_img)
+                if modo_swamp:
+                    pygame.draw.rect(screen, (180, 50, 220), (320 + (k * 85), 550, 120, 168), 3)
+
+            for j in range(len(lista_mano_1)):
+                draw(320 + (j * 85), 0, IMAGENES_CARTAS[lista_mano_1[j]])
+        else:
+            for j in range(len(lista_mano_2)):
+                draw(320 + (j * 85), 550, IMAGENES_CARTAS[lista_mano_2[j]])
+
+            for k in range(len(lista_mano_1)):
+                draw(320 + (k * 85), 0, mazo_img)
+                if modo_swamp:
+                    pygame.draw.rect(screen, (180, 50, 220), (320 + (k * 85), 0, 120, 168), 3)
+
+        screen.blit(boton_turno, boton_turno_rect)
+        screen.blit(boton_robo, boton_robo_rect)
+
+        # Campos de juego
+        for idx, nombre in enumerate(cartas_campo_p1):
+            pos_x = 320 + (idx * 75)
+            draw(pos_x, 200, IMAGENES_CAMPO[nombre])
+            if (modo_destruir or modo_bounce) and not turno1:
+                color_borde = (255, 0, 0) if modo_destruir else (0, 150, 255)
+                pygame.draw.rect(screen, color_borde, (pos_x, 200, 90, 126), 3)
+
+        for idx, nombre in enumerate(cartas_campo_p2):
+            pos_x = 320 + (idx * 75)
+            draw(pos_x, 380, IMAGENES_CAMPO[nombre])
+            if (modo_destruir or modo_bounce) and turno1:
+                color_borde = (255, 0, 0) if modo_destruir else (0, 150, 255)
+                pygame.draw.rect(screen, color_borde, (pos_x, 380, 90, 126), 3)
+
+        # Cementerios
+        pygame.draw.rect(screen, (80, 40, 40), rect_descarte_p1)
+        pygame.draw.rect(screen, (255, 255, 255), rect_descarte_p1, 2)
+        if len(cartas_descarte_p1) > 0:
+            draw(1120, 200, IMAGENES_CAMPO[cartas_descarte_p1[-1]])
+        else:
+            lbl_cem_p1 = fuente_etiquetas.render(f"Cem. {nombre_p1[:6]}", True, (200, 200, 200))
+            screen.blit(lbl_cem_p1, (1125, 250))
+
+        pygame.draw.rect(screen, (80, 40, 40), rect_descarte_p2)
+        pygame.draw.rect(screen, (255, 255, 255), rect_descarte_p2, 2)
+        if len(cartas_descarte_p2) > 0:
+            draw(1120, 380, IMAGENES_CAMPO[cartas_descarte_p2[-1]])
+        else:
+            lbl_cem_p2 = fuente_etiquetas.render(f"Cem. {nombre_p2[:6]}", True, (200, 200, 200))
+            screen.blit(lbl_cem_p2, (1125, 430))
+
+        # BANNERS DE AVISO
+        if modo_destruir:
+            banner = pygame.Rect(300, 165, 650, 30)
+            pygame.draw.rect(screen, (200, 30, 30), banner)
+            pygame.draw.rect(screen, (255, 255, 255), banner, 2)
+            txt_aviso = fuente_aviso.render("¡Efecto Montaña! Selecciona una carta del CAMPO ENEMIGO para destruirla.", True, (255, 255, 255))
+            rect_txt_aviso = txt_aviso.get_rect(center=banner.center)
+            screen.blit(txt_aviso, rect_txt_aviso)
+
+        if modo_bounce:
+            banner = pygame.Rect(300, 165, 670, 30)
+            pygame.draw.rect(screen, (0, 120, 220), banner)
+            pygame.draw.rect(screen, (255, 255, 255), banner, 2)
+            txt_aviso = fuente_aviso.render("¡Efecto Isla! Selecciona una carta del CAMPO ENEMIGO para subirla a su mano.", True, (255, 255, 255))
+            rect_txt_aviso = txt_aviso.get_rect(center=banner.center)
+            screen.blit(txt_aviso, rect_txt_aviso)
+
+        if modo_swamp:
+            banner = pygame.Rect(300, 165, 720, 30)
+            pygame.draw.rect(screen, (100, 40, 140), banner)
+            pygame.draw.rect(screen, (255, 255, 255), banner, 2)
+            txt_aviso = fuente_aviso.render("¡Efecto Pantano! Selecciona una carta BOCA ABAJO de la mano enemiga para descartarla.", True, (255, 255, 255))
+            rect_txt_aviso = txt_aviso.get_rect(center=banner.center)
+            screen.blit(txt_aviso, rect_txt_aviso)
+
+        # POP-UP UNIFICADO DE JUGAR / CANCELAR
+        if mostrar_popup and carta_seleccionada is not None:
+            ventana_popup.fill((0, 0, 0, 220))
+            screen.blit(ventana_popup, pos_popup)
+
+            screen.blit(carta_seleccionada, (pos_popup[0] + 140, pos_popup[1] + 30))    
+            
+            pygame.draw.rect(screen, (40, 180, 90), btn_accion)
+            screen.blit(texto_jugar, rect_texto_jugar)
+
+            pygame.draw.rect(screen, (200, 50, 50), btn_cancelar)
+            screen.blit(texto_cancelar, rect_texto_cancelar)
+
+        # POP-UP INSPECCIONAR CEMENTERIO O REVIVIR
+        if mostrar_popup_cementerio:
+            ventana_popup_cem.fill((20, 20, 20, 235))
+            screen.blit(ventana_popup_cem, pos_popup_cem)
+
+            txt_titulo = fuente_titulo.render(titulo_cementerio, True, (255, 255, 255))
+            screen.blit(txt_titulo, (pos_popup_cem[0] + 30, pos_popup_cem[1] + 25))
+
+            if len(cementerio_a_mostrar) == 0:
+                txt_vacio = fuente_botones.render("El cementerio está vacío", True, (150, 150, 150))
+                screen.blit(txt_vacio, (pos_popup_cem[0] + 230, pos_popup_cem[1] + 130))
+            else:
+                for idx, nombre in enumerate(cementerio_a_mostrar):
+                    pos_x_cem = pos_popup_cem[0] + 30 + (idx * 100)
+                    pos_y_cem = pos_popup_cem[1] + 80
+                    if pos_x_cem + 90 < pos_popup_cem[0] + 670:
+                        draw(pos_x_cem, pos_y_cem, IMAGENES_CAMPO[nombre])
+                        if modo_revivir:
+                            pygame.draw.rect(screen, (40, 220, 90), (pos_x_cem, pos_y_cem, 90, 126), 2)
+
+            pygame.draw.rect(screen, (200, 50, 50), btn_cerrar_cem)
+            screen.blit(texto_cerrar_cem, rect_texto_cerrar_cem)
+
     pygame.display.update()
+
+pygame.quit()
+sys.exit()
